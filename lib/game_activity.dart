@@ -57,99 +57,104 @@ class _GameActivityState extends State<GameActivity> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView(
-        children: <Widget>[
-          Container(
-            color: const Color(0xFFC4C4C4),
-            height: 60.0,
-            width: double.infinity,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                InkWell(
-                  onTap: () {
-                    _initialiseGame();
-                  },
-                  child: const CircleAvatar(
-                    child: Icon(
-                      Icons.cancel,
-                      color: Color(0xFFCC4B4C),
-                      size: 40.0,
+      backgroundColor: const Color(0xFFC4C4C4),
+      body: Padding(
+        padding: const EdgeInsets.all(2.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              color: const Color(0xFFC4C4C4),
+              height: 60.0,
+              width: double.infinity,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  InkWell(
+                    onTap: () {
+                      _initialiseGame();
+                    },
+                    child: const CircleAvatar(
+                      child: Icon(
+                        Icons.cancel,
+                        color: Color(0xFFCC4B4C),
+                        size: 40.0,
+                      ),
+                      backgroundColor: Color(0xFF4D4D4D),
                     ),
-                    backgroundColor: Color(0xFF4D4D4D),
-                  ),
-                )
-              ],
+                  )
+                ],
+              ),
             ),
-          ),
-          // The grid of squares
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columnCount,
-            ),
-            itemBuilder: (context, position) {
-              // Get row and column number of square
-              int rowNumber = (position / columnCount).floor();
-              int columnNumber = (position % columnCount);
+            // The grid of squares
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columnCount,
+              ),
+              itemBuilder: (context, position) {
+                // Get row and column number of square
+                int rowNumber = (position / columnCount).floor();
+                int columnNumber = (position % columnCount);
 
-              Image image;
+                Image image;
 
-              if (openedSquares[position] == false) {
-                if (flaggedSquares[position] == true) {
-                  image = getImage(ImageType.flagged);
-                } else {
-                  image = getImage(ImageType.facingDown);
-                }
-              } else {
-                if (board[rowNumber][columnNumber].hasBomb) {
-                  image = getImage(ImageType.bomb);
-                } else {
-                  image = getImage(
-                    getImageTypeFromNumber(
-                        board[rowNumber][columnNumber].bombsAround),
-                  );
-                }
-              }
-
-              return InkWell(
-                // Opens square
-                onTap: () {
-                  if (board[rowNumber][columnNumber].hasBomb) {
-                    _handleGameOver();
-                  }
-                  if (board[rowNumber][columnNumber].bombsAround == 0) {
-                    _handleTap(rowNumber, columnNumber);
+                if (openedSquares[position] == false) {
+                  if (flaggedSquares[position] == true) {
+                    image = getImage(ImageType.flagged);
                   } else {
-                    setState(() {
-                      openedSquares[position] = true;
-                      squaresLeft = squaresLeft - 1;
-                    });
+                    image = getImage(ImageType.facingDown);
                   }
+                } else {
+                  if (board[rowNumber][columnNumber].hasBomb) {
+                    image = getImage(ImageType.bomb);
+                  } else {
+                    image = getImage(
+                      getImageTypeFromNumber(
+                          board[rowNumber][columnNumber].bombsAround),
+                    );
+                  }
+                }
 
-                  if (squaresLeft <= bombCount) {
-                    _handleWin();
-                  }
-                },
-                // Flags square
-                onLongPress: () {
-                  if (openedSquares[position] == false) {
-                    setState(() {
-                      flaggedSquares[position] = true;
-                    });
-                  }
-                },
-                splashColor: Colors.grey,
-                child: Container(
-                  color: Colors.grey,
-                  child: image,
-                ),
-              );
-            },
-            itemCount: rowCount * columnCount,
-          ),
-        ],
+                return InkWell(
+                  // Opens square
+                  onTap: () {
+                    if (board[rowNumber][columnNumber].hasBomb) {
+                      _handleGameOver();
+                    }
+                    if (board[rowNumber][columnNumber].bombsAround == 0) {
+                      _handleTap(rowNumber, columnNumber);
+                    } else {
+                      setState(() {
+                        openedSquares[position] = true;
+                        squaresLeft = squaresLeft - 1;
+                      });
+                    }
+
+                    if (squaresLeft <= bombCount) {
+                      _handleWin();
+                    }
+                  },
+                  // Flags square
+                  onLongPress: () {
+                    if (openedSquares[position] == false) {
+                      setState(() {
+                        flaggedSquares[position] = true;
+                      });
+                    }
+                  },
+                  splashColor: Colors.grey,
+                  child: Container(
+                    color: Colors.grey,
+                    child: image,
+                  ),
+                );
+              },
+              itemCount: rowCount * columnCount,
+            ),
+          ],
+        ),
       ),
     );
   }
