@@ -1,6 +1,6 @@
 {
-    "name": "sapper",
-    "short_name": "sapper",
+    "name": "Sapper",
+    "short_name": "Sapper",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

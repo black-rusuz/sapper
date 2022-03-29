@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'constants.dart';
 import 'game_activity.dart';
 
 void main() => runApp(const MyApp());
@@ -10,7 +10,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sapper',
+      title: Constants.appName,
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),

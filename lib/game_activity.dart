@@ -1,24 +1,12 @@
 import 'dart:math';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:stop_watch_timer/stop_watch_timer.dart';
 
 import 'bomb_square.dart';
-
-// Types of images available
-enum ImageType {
-  zero,
-  one,
-  two,
-  three,
-  four,
-  five,
-  six,
-  seven,
-  eight,
-  bomb,
-  facingDown,
-  flagged,
-}
+import 'constants.dart';
 
 class GameActivity extends StatefulWidget {
   const GameActivity({Key? key}) : super(key: key);
@@ -31,6 +19,12 @@ class _GameActivityState extends State<GameActivity> {
   // Row and column count of the board
   int rowCount = 10;
   int columnCount = 10;
+
+  bool invertTap = false;
+  int lastGameTime = 0;
+  int lastGameBombs = 0;
+
+  final _stopWatchTimer = StopWatchTimer();
 
   // The grid of squares
   late List<List<BoardSquare>> board;
@@ -57,19 +51,28 @@ class _GameActivityState extends State<GameActivity> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFC4C4C4),
+      backgroundColor: Constants.background,
       body: Padding(
         padding: const EdgeInsets.all(2.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Container(
-              color: const Color(0xFFC4C4C4),
+              color: Constants.background,
               height: 60.0,
               width: double.infinity,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
+                  StreamBuilder<int>(
+                    stream: _stopWatchTimer.secondTime,
+                    initialData: 0,
+                    builder: (context, snap) {
+                      String time = _formatTime(snap.data!);
+                      return Text("Time passed: $time",
+                          style: Constants.textStyle);
+                    },
+                  ),
                   InkWell(
                     onTap: () {
                       _initialiseGame();
@@ -77,12 +80,13 @@ class _GameActivityState extends State<GameActivity> {
                     child: const CircleAvatar(
                       child: Icon(
                         Icons.cancel,
-                        color: Color(0xFFCC4B4C),
+                        color: Constants.cancel,
                         size: 40.0,
                       ),
-                      backgroundColor: Color(0xFF4D4D4D),
+                      backgroundColor: Constants.cancelBorder,
                     ),
-                  )
+                  ),
+                  Text("Bombs: $bombCount", style: Constants.textStyle)
                 ],
               ),
             ),
@@ -118,40 +122,45 @@ class _GameActivityState extends State<GameActivity> {
                 }
 
                 return InkWell(
-                  // Opens square
-                  onTap: () {
-                    if (board[rowNumber][columnNumber].hasBomb) {
-                      _handleGameOver();
-                    }
-                    if (board[rowNumber][columnNumber].bombsAround == 0) {
-                      _handleTap(rowNumber, columnNumber);
-                    } else {
-                      setState(() {
-                        openedSquares[position] = true;
-                        squaresLeft = squaresLeft - 1;
-                      });
-                    }
-
-                    if (squaresLeft <= bombCount) {
-                      _handleWin();
-                    }
-                  },
-                  // Flags square
-                  onLongPress: () {
-                    if (openedSquares[position] == false) {
-                      setState(() {
-                        flaggedSquares[position] = true;
-                      });
-                    }
-                  },
-                  splashColor: Colors.grey,
+                  onTap: () => _onTap(rowNumber, columnNumber, position),
+                  onLongPress: () =>
+                      _onLongTap(rowNumber, columnNumber, position),
+                  splashColor: Constants.grey,
                   child: Container(
-                    color: Colors.grey,
+                    color: Constants.grey,
                     child: image,
                   ),
                 );
               },
               itemCount: rowCount * columnCount,
+            ),
+            Container(
+              color: Constants.background,
+              height: 60.0,
+              width: double.infinity,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  InkWell(
+                    onTap: () => invertTap = !invertTap,
+                    child: const CircleAvatar(
+                      child: Icon(
+                        Icons.touch_app,
+                        color: Constants.grey,
+                        size: 40.0,
+                      ),
+                      backgroundColor: Constants.cancelBorder,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => _showStats(),
+                    child: const Text("Show stats", style: Constants.textStyle),
+                    style: TextButton.styleFrom(
+                        primary: Constants.grey,
+                        backgroundColor: Constants.cancelBorder),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -159,8 +168,93 @@ class _GameActivityState extends State<GameActivity> {
     );
   }
 
+  String _formatTime(int secondsTotal) {
+    int min = (secondsTotal / 60).floor();
+    int sec = secondsTotal - min * 60;
+    return sec < 10 ? "$min:0$sec" : "$min:$sec";
+  }
+
+  void _onTap(int rowNumber, int columnNumber, int position) {
+    if (invertTap) {
+      _flagSquare(rowNumber, columnNumber, position);
+    } else {
+      _openSquare(rowNumber, columnNumber, position);
+    }
+  }
+
+  void _onLongTap(int rowNumber, int columnNumber, int position) {
+    if (invertTap) {
+      _openSquare(rowNumber, columnNumber, position);
+    } else {
+      _flagSquare(rowNumber, columnNumber, position);
+    }
+  }
+
+  void _openSquare(int rowNumber, int columnNumber, int position) {
+    if (board[rowNumber][columnNumber].hasBomb) {
+      _handleGameOver();
+    }
+
+    if (board[rowNumber][columnNumber].bombsAround == 0) {
+      _handleTap(rowNumber, columnNumber);
+    } else {
+      setState(() {
+        openedSquares[position] = true;
+        squaresLeft = squaresLeft - 1;
+      });
+    }
+
+    if (squaresLeft <= bombCount) {
+      _handleWin();
+    }
+  }
+
+  void _flagSquare(int rowNumber, int columnNumber, int position) {
+    if (openedSquares[position] == false) {
+      setState(() => flaggedSquares[position] = !flaggedSquares[position]);
+    }
+  }
+
+  void _showStats() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Statistics", textAlign: TextAlign.center),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Previous game: "),
+              Text(_formatTime(lastGameTime)),
+              const Text("Bombs: "),
+              Text(lastGameBombs.toString()),
+            ]
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<String> get _localPath async {
+    final directory = await getApplicationDocumentsDirectory();
+    print(directory);
+    return directory.path;
+  }
+
   // Initialises all lists
   void _initialiseGame() {
+    lastGameTime = _stopWatchTimer.rawTime.value ~/ 1000;
+    lastGameBombs = bombCount;
+    _stopWatchTimer.onExecute.add(StopWatchExecute.reset);
+    _stopWatchTimer.onExecute.add(StopWatchExecute.start);
     // Initialise all squares to having no bombs
     board = List.generate(rowCount, (i) {
       return List.generate(columnCount, (j) {
@@ -297,7 +391,9 @@ class _GameActivityState extends State<GameActivity> {
 
   // Function to handle when a bomb is clicked.
   void _handleGameOver() {
+    _stopWatchTimer.onExecute.add(StopWatchExecute.stop);
     showDialog(
+      barrierDismissible: false,
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -336,6 +432,12 @@ class _GameActivityState extends State<GameActivity> {
         );
       },
     );
+  }
+
+  @override
+  void dispose() async {
+    super.dispose();
+    await _stopWatchTimer.dispose(); // Need to call dispose function.
   }
 
   Image getImage(ImageType type) {
@@ -393,4 +495,20 @@ class _GameActivityState extends State<GameActivity> {
         return ImageType.bomb;
     }
   }
+}
+
+// Types of images available
+enum ImageType {
+  zero,
+  one,
+  two,
+  three,
+  four,
+  five,
+  six,
+  seven,
+  eight,
+  bomb,
+  facingDown,
+  flagged,
 }
